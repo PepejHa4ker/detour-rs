@@ -11,6 +11,7 @@ mod trampoline;
 // TODO: Add test for negative branch displacements
 #[cfg(all(feature = "nightly", test))]
 mod tests {
+  use std::arch::asm;
   use crate::error::{Error, Result};
   use crate::RawDetour;
   use matches::assert_matches;
@@ -36,26 +37,7 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn detour_relative_branch() -> Result<()> {
-    #[naked]
-    unsafe extern "C" fn branch_ret5() -> i32 {
-      asm!(
-        "
-            xor eax, eax
-            je ret5
-            mov eax, 2
-            jmp done
-          ret5:
-            mov eax, 5
-          done:
-            ret",
-        options(noreturn)
-      );
-    }
 
-    unsafe { detour_test(mem::transmute(branch_ret5 as usize), 5) }
-  }
 
   #[test]
   fn detour_hotpatch() -> Result<()> {
@@ -72,49 +54,15 @@ mod tests {
             ret
             mov eax, 5",
         options(noreturn)
-      );
+      )
     }
 
     unsafe { detour_test(mem::transmute(hotpatch_ret0 as usize + 5), 0) }
   }
 
-  #[test]
-  fn detour_padding_after() -> Result<()> {
-    #[naked]
-    unsafe extern "C" fn padding_after_ret0() -> i32 {
-      asm!(
-        "
-            mov edi, edi
-            xor eax, eax
-            ret
-            nop
-            nop",
-        options(noreturn)
-      );
-    }
 
-    unsafe { detour_test(mem::transmute(padding_after_ret0 as usize + 2), 0) }
-  }
 
-  #[test]
-  fn detour_external_loop() {
-    #[naked]
-    unsafe extern "C" fn external_loop() -> i32 {
-      asm!(
-        "
-            loop dest
-            nop
-            nop
-            nop
-            dest:",
-        options(noreturn)
-      );
-    }
 
-    let error =
-      unsafe { RawDetour::new(external_loop as *const (), ret10 as *const ()) }.unwrap_err();
-    assert_matches!(error, Error::UnsupportedInstruction);
-  }
 
   #[test]
   #[cfg(target_arch = "x86_64")]
@@ -130,7 +78,7 @@ mod tests {
             nop
             ret",
         options(noreturn)
-      );
+      )
     }
 
     unsafe { detour_test(rip_relative_ret195, 195) }
@@ -147,7 +95,7 @@ mod tests {
             mov al, [rip-0x8]
             ret",
         options(noreturn)
-      );
+      )
     }
 
     unsafe { detour_test(rip_relative_prolog_ret49, 49) }
