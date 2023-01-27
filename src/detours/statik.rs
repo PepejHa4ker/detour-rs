@@ -2,6 +2,7 @@ use crate::error::{Error, Result};
 use crate::{Function, GenericDetour};
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::{mem, ptr};
+use std::marker::Tuple;
 
 /// A type-safe static detour.
 ///
@@ -103,7 +104,7 @@ impl<T: Function> StaticDetour<T> {
   /// ```
   pub unsafe fn initialize<D>(&self, target: T, closure: D) -> Result<&Self>
   where
-    D: Fn<T::Arguments, Output = T::Output> + Send + 'static,
+    D: Fn<T::Arguments, Output = T::Output> + Send + 'static, <T as Function>::Arguments: Tuple
   {
     let mut detour = Box::new(GenericDetour::new(target, self.ffi)?);
     if self
@@ -154,7 +155,7 @@ impl<T: Function> StaticDetour<T> {
   /// Changes the detour, regardless of whether the hook is enabled or not.
   pub fn set_detour<C>(&self, closure: C)
   where
-    C: Fn<T::Arguments, Output = T::Output> + Send + 'static,
+    C: Fn<T::Arguments, Output = T::Output> + Send + 'static, <T as Function>::Arguments: Tuple
   {
     let previous = self
       .closure
